@@ -4,7 +4,6 @@ using Muflone.Messages;
 using Muflone.Messages.Commands;
 using Muflone.Transport.Azure.Extensions;
 using Muflone.Transport.Azure.Factories;
-using Muflone.Transport.Azure.Models;
 
 namespace Muflone.Transport.Azure;
 
@@ -12,16 +11,13 @@ public class ServiceBus : IServiceBus, IEventBus
 {
     private readonly IServiceBusSenderFactory _senderFactory;
     private readonly ILogger<ServiceBus> _logger;
-    private readonly ClientInfo _clientInfo;
     private readonly IMessageSerializer _messageSerializer;
 
     public ServiceBus(IServiceBusSenderFactory senderFactory,
-        ILogger<ServiceBus> logger,
-        ClientInfo clientInfo)
+        ILogger<ServiceBus> logger)
     {
         _senderFactory = senderFactory ?? throw new ArgumentNullException(nameof(senderFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        _clientInfo = clientInfo ?? throw new ArgumentNullException(nameof(clientInfo));
         _messageSerializer = new MessageSerializer();
     }
 
@@ -36,7 +32,7 @@ public class ServiceBus : IServiceBus, IEventBus
     private async Task SendAsyncCore<T>(T command) where T : class, ICommand
     {
         var sender = _senderFactory.Create(command);
-        _logger.LogInformation($"client '{_clientInfo.ClientId}' send command '{command.MessageId}' to {sender.FullyQualifiedNamespace}/{sender.EntityPath}");
+        _logger.LogInformation($"Send command '{command.MessageId}' to {sender.FullyQualifiedNamespace}/{sender.EntityPath}");
 
         var serializedMessage = _messageSerializer.Serialize(command);
 
@@ -74,7 +70,7 @@ public class ServiceBus : IServiceBus, IEventBus
     public async Task PublishAsyncCore(IMessage @event)
     {
         var sender = _senderFactory.Create(@event);
-        _logger.LogInformation($"client '{_clientInfo.ClientId}' publishing event '{@event.MessageId}' to {sender.FullyQualifiedNamespace}/{sender.EntityPath}");
+        _logger.LogInformation($"Publishing event '{@event.MessageId}' to {sender.FullyQualifiedNamespace}/{sender.EntityPath}");
 
         var serializedMessage = _messageSerializer.Serialize(@event);
 

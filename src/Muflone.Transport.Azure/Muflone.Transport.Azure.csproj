@@ -33,6 +33,7 @@
 	<ItemGroup>
 	  <Folder Include="Factories\" />
 	  <Folder Include="Extensions\" />
+	  <Folder Include="Abstracts\" />
 	</ItemGroup>
 
 </Project>
