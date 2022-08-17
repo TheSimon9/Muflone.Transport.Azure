@@ -12,6 +12,12 @@ public class MessageSerializer : IMessageSerializer
         PropertyNameCaseInsensitive = true
     };
 
+    public string SerializeAsString<T>(T data)
+    {
+        var type = data.GetType();
+        return JsonSerializer.Serialize(data, type, Settings);
+    }
+
     public byte[] Serialize<T>(T data)
     {
         var type = data.GetType();

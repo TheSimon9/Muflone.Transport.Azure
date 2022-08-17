@@ -1,30 +1,32 @@
-﻿using System.Globalization;
-using Azure.Messaging.ServiceBus;
+﻿using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.Logging;
-using Muflone.Messages;
+using Muflone.Messages.Commands;
 using Muflone.Transport.Azure.Abstracts;
 using Muflone.Transport.Azure.Extensions;
 using Muflone.Transport.Azure.Models;
+using System.Globalization;
+using Muflone.Factories;
 
 namespace Muflone.Transport.Azure;
 
-public sealed class ServiceBusSubscriber<T> : ISubscriber<T>, IAsyncDisposable where T : IMessage
+public class CommandProcessor<T> : ISubscriber<T>, ICommandProcessor, IAsyncDisposable where T : class, ICommand
 {
     private readonly ServiceBusProcessor _processor;
-    private readonly IMessageProcessor _messageProcessor;
+    private readonly ICommandHandlerAsync<T> _commandHandlerAsync;
     private readonly IMessageSerializer _messageSerializer;
-    private readonly ILogger <ServiceBusSubscriber<T>> _logger;
+    private readonly ILogger<CommandProcessor<T>> _logger;
 
-    public ServiceBusSubscriber(ServiceBusClient serviceBusClient,
-        IMessageProcessor messageProcessor,
-        IMessageSerializer messageSerializer,
+    public CommandProcessor(ServiceBusClient serviceBusClient,
+        ICommandHandlerFactoryAsync commandHandlerFactory,
+        IMessageSerializer? messageSerializer,
         AzureServiceBusConfiguration azureServiceBusConfiguration,
-        ILogger<ServiceBusSubscriber<T>> logger)
+        ILogger<CommandProcessor<T>> logger)
     {
-        _messageProcessor = messageProcessor ?? throw new ArgumentNullException(nameof(messageProcessor));
-        _messageSerializer = messageSerializer ?? throw new ArgumentNullException(nameof(messageSerializer));
-
+        _commandHandlerAsync = commandHandlerFactory.CreateCommandHandlerAsync<T>() ?? throw new ArgumentNullException(nameof(commandHandlerFactory));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+        _messageSerializer = messageSerializer ?? new MessageSerializer();
+
         _processor = serviceBusClient.CreateProcessor(
             topicName: typeof(T).Name.ToLower(CultureInfo.InvariantCulture),
             subscriptionName: "", new ServiceBusProcessorOptions
@@ -32,10 +34,38 @@ public sealed class ServiceBusSubscriber<T> : ISubscriber<T>, IAsyncDisposable w
                 AutoCompleteMessages = false,
                 MaxConcurrentCalls = azureServiceBusConfiguration.MaxConcurrentCalls
             });
-
         _processor.ProcessMessageAsync += MessageHandler;
         _processor.ProcessErrorAsync += ProcessErrorAsync;
     }
+
+    public Task ProcessAsync<T>(T message, CancellationToken cancellationToken = default)
+    {
+        if (message == null)
+            throw new ArgumentNullException(nameof(message));
+
+        return ProcessAsyncCore(message, cancellationToken);
+    }
+
+    private async Task ProcessAsyncCore<T>(T message, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (message == null)
+                throw new ArgumentNullException(nameof(message));
+
+            await _commandHandlerAsync.HandleAsync((dynamic)message, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"An error occurred processing command {typeof(T).Name}. StackTrace: {ex.StackTrace} - Source: {ex.Source} - Message: {ex.Message}");
+            throw;
+        }
+    }
+
+    public async Task StartAsync(CancellationToken cancellationToken = default) =>
+        await _processor.StartProcessingAsync(cancellationToken).ConfigureAwait(false);
+
+    public Task StopAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
     private async Task MessageHandler(ProcessMessageEventArgs args)
     {
@@ -45,7 +75,7 @@ public sealed class ServiceBusSubscriber<T> : ISubscriber<T>, IAsyncDisposable w
 
             var message = await _messageSerializer.DeserializeAsync<T>(args.Message.Body.ToStream());
 
-            await _messageProcessor.ProcessAsync((dynamic)message, args.CancellationToken);
+            await ProcessAsync((ICommand)message, args.CancellationToken);
 
             await args.CompleteMessageAsync(args.Message).ConfigureAwait(false);
         }
@@ -65,12 +95,7 @@ public sealed class ServiceBusSubscriber<T> : ISubscriber<T>, IAsyncDisposable w
         return Task.CompletedTask;
     }
 
-    public async Task StartAsync(CancellationToken cancellationToken = default)
-    {
-        await _processor.StartProcessingAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    public Task StopAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
-
+    #region Dispose
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+    #endregion
 }
