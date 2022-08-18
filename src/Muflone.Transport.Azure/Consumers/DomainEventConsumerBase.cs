@@ -12,6 +12,8 @@ namespace Muflone.Transport.Azure.Consumers;
 
 public abstract class DomainEventConsumerBase<T> : IConsumer, IAsyncDisposable where T : class, IDomainEvent
 {
+    public string TopicName { get; }
+
     private readonly ServiceBusProcessor _processor;
     private readonly IMessageSerializer _messageSerializer;
     private readonly ILogger _logger;
@@ -22,11 +24,14 @@ public abstract class DomainEventConsumerBase<T> : IConsumer, IAsyncDisposable w
         ILoggerFactory loggerFactory,
         IMessageSerializer? messageSerializer = null)
     {
+
+        TopicName = typeof(T).Name;
+
         _logger = loggerFactory.CreateLogger(GetType()) ?? throw new ArgumentNullException(nameof(loggerFactory));
         _messageSerializer = messageSerializer ?? new MessageSerializer();
 
-        if (string.IsNullOrWhiteSpace(azureServiceBusConfiguration.SubscriptionName))
-            throw new ArgumentNullException(nameof(azureServiceBusConfiguration.SubscriptionName));
+        if (string.IsNullOrWhiteSpace(azureServiceBusConfiguration.ClientId))
+            throw new ArgumentNullException(nameof(azureServiceBusConfiguration.ClientId));
 
         // Create Topic on Azure ServiceBus if missing
         ServiceBusAdministrator.CreateTopicIfNotExistAsync(azureServiceBusConfiguration).GetAwaiter().GetResult();
@@ -34,7 +39,7 @@ public abstract class DomainEventConsumerBase<T> : IConsumer, IAsyncDisposable w
         var serviceBusClient = new ServiceBusClient(azureServiceBusConfiguration.ConnectionString);
         _processor = serviceBusClient.CreateProcessor(
             topicName: typeof(T).Name.ToLower(CultureInfo.InvariantCulture),
-            subscriptionName: azureServiceBusConfiguration.SubscriptionName, new ServiceBusProcessorOptions
+            subscriptionName: $"{azureServiceBusConfiguration.ClientId}-subscription", new ServiceBusProcessorOptions
             {
                 AutoCompleteMessages = false,
                 MaxConcurrentCalls = azureServiceBusConfiguration.MaxConcurrentCalls
@@ -42,7 +47,6 @@ public abstract class DomainEventConsumerBase<T> : IConsumer, IAsyncDisposable w
         _processor.ProcessMessageAsync += AzureMessageHandler;
         _processor.ProcessErrorAsync += ProcessErrorAsync;
     }
-
     public async Task StartAsync(CancellationToken cancellationToken = default) =>
         await _processor.StartProcessingAsync(cancellationToken).ConfigureAwait(false);
 

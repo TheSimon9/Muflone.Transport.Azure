@@ -43,9 +43,12 @@ public class ServiceBusTests
     {
         var connectionString =
             "Endpoint=sb://brewup.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=1Iy45wRMiuVRD6A/hTYh3dH8Lgn3K/AHxkUMt5QbdOA=";
-        
-        var serviceBusSenderFactory = new ServiceBusSenderFactory(new AzureQueueReferenceFactory(),
-            new ServiceBusClient(connectionString));
+
+        var configurations = new List<AzureServiceBusConfiguration>
+        {
+            new (connectionString, nameof(AddOrder), string.Empty)
+        };
+        var serviceBusSenderFactory = new ServiceBusSenderFactory(new ServiceBusClient(connectionString), configurations);
         var serviceBus = new ServiceBus(serviceBusSenderFactory, new NullLogger<ServiceBus>());
 
         await ServiceBusAdministrator.CreateQueueIfNotExistAsync(new AzureQueueReferences("addorder", "addorder-subscription",
@@ -53,7 +56,7 @@ public class ServiceBusTests
         var command = new AddOrder(new OrderId(Guid.NewGuid()), DateTime.UtcNow);
         await serviceBus.SendAsync(command);
 
-        var commandProcessor = new AddOrderProcessor(new AzureServiceBusConfiguration(connectionString, "addorder"), 
+        var commandProcessor = new AddOrderProcessor(new AzureServiceBusConfiguration(connectionString, "addorder", "ServiceBusTest"), 
             new NullLoggerFactory());
 
         await commandProcessor.StartAsync();

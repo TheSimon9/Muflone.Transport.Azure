@@ -20,10 +20,10 @@ public static class ServiceBusAdministrator
 		}
 
 		var subscriptionExists =
-			await adminClient.SubscriptionExistsAsync(azureServiceBusConfiguration.TopicName, azureServiceBusConfiguration.SubscriptionName);
+			await adminClient.SubscriptionExistsAsync(azureServiceBusConfiguration.TopicName, $"{azureServiceBusConfiguration.ClientId}-subscription");
 		if (!subscriptionExists)
 		{
-			var options = new CreateSubscriptionOptions(azureServiceBusConfiguration.TopicName, azureServiceBusConfiguration.SubscriptionName)
+			var options = new CreateSubscriptionOptions(azureServiceBusConfiguration.TopicName, $"{azureServiceBusConfiguration.ClientId}-subscription")
 			{
 				DefaultMessageTimeToLive = new TimeSpan(14, 0, 0, 0),
 				DeadLetteringOnMessageExpiration = true,

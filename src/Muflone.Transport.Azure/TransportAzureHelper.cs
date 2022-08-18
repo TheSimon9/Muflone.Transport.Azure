@@ -12,11 +12,18 @@ public static class TransportAzureHelper
         AzureServiceBusConfiguration azureServiceBusConfiguration,
         IEnumerable<IConsumer> messageConsumers)
     {
+        var configurations = Enumerable.Empty<AzureServiceBusConfiguration>();
         foreach (var consumer in messageConsumers)
         {
             consumer.StartAsync().GetAwaiter().GetResult();
+            configurations = configurations.Concat(new List<AzureServiceBusConfiguration>
+            {
+                new (azureServiceBusConfiguration.ConnectionString, consumer.TopicName,
+                    azureServiceBusConfiguration.ClientId)
+            });
         }
 
+        services.AddSingleton(configurations);
         services.AddSingleton(new ServiceBusClient(azureServiceBusConfiguration.ConnectionString));
         services.AddSingleton<IServiceBusSenderFactory, ServiceBusSenderFactory>();
         services.AddSingleton<IServiceBus, ServiceBus>();

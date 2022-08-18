@@ -5,6 +5,7 @@ namespace Muflone.Transport.Azure.Abstracts;
 
 public interface IConsumer
 {
+    string TopicName { get; }
     Task StartAsync(CancellationToken cancellationToken = default);
     Task StopAsync(CancellationToken cancellationToken = default);
 

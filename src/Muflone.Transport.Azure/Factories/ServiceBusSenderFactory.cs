@@ -7,20 +7,24 @@ namespace Muflone.Transport.Azure.Factories;
 
 public class ServiceBusSenderFactory : IAsyncDisposable, IServiceBusSenderFactory
 {
-    private readonly IAzureQueueReferenceFactory _queueReferenceFactory;
     private readonly ServiceBusClient _serviceBusClient;
     private readonly ConcurrentDictionary<AzureQueueReferences, ServiceBusSender> _senders = new();
 
-    public ServiceBusSenderFactory(IAzureQueueReferenceFactory queueReferenceFactory,
-        ServiceBusClient serviceBusClient)
+    private readonly IEnumerable<AzureServiceBusConfiguration> _configurations;
+
+    public ServiceBusSenderFactory(ServiceBusClient serviceBusClient,
+        IEnumerable<AzureServiceBusConfiguration> configurations)
     {
-        _queueReferenceFactory = queueReferenceFactory ?? throw new ArgumentNullException(nameof(queueReferenceFactory));
         _serviceBusClient = serviceBusClient ?? throw new ArgumentNullException(nameof(serviceBusClient));
+        _configurations = configurations;
     }
 
     public ServiceBusSender Create<T>(T message) where T : IMessage
     {
-        var references = _queueReferenceFactory.Create<T>();
+        var configuration = _configurations.FirstOrDefault(c => c.TopicName.Equals(message.GetType().Name));
+
+        var references = new AzureQueueReferences(message.GetType().Name, $"{configuration!.ClientId}-subscription",
+            configuration!.ConnectionString);
         var sender = _senders.GetOrAdd(references, _ => _serviceBusClient.CreateSender(references.TopicName));
         
         if (sender is null || sender.IsClosed)
@@ -31,8 +35,9 @@ public class ServiceBusSenderFactory : IAsyncDisposable, IServiceBusSenderFactor
 
     public ServiceBusSender Create(IMessage message)
     {
-        var references = new AzureQueueReferences(message.GetType().Name, "beerdriven-subscription", 
-            "Endpoint=sb://brewup.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=1Iy45wRMiuVRD6A/hTYh3dH8Lgn3K/AHxkUMt5QbdOA=");
+        var configuration = _configurations.FirstOrDefault(c => c.TopicName.Equals(message.GetType().Name));
+        var references = new AzureQueueReferences(message.GetType().Name, $"{configuration!.ClientId}-subscription", 
+            configuration!.ConnectionString);
 
         var sender = _senders.GetOrAdd(references, _ => _serviceBusClient.CreateSender(references.TopicName));
 

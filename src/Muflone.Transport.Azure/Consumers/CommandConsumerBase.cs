@@ -10,8 +10,16 @@ using Muflone.Transport.Azure.Factories;
 
 namespace Muflone.Transport.Azure.Consumers;
 
+/// <summary>
+/// TODO: Unify Consumer: ora ci sono Consumer diversi per Command e DomainEvent
+/// TODO: Rimuovere stringhe di connessione e subscriptioname dal codice
+/// </summary>
+/// <typeparam name="T"></typeparam>
+
 public abstract class CommandConsumerBase<T> : IConsumer, IAsyncDisposable where T : class, ICommand
 {
+    public string TopicName { get; }
+
     private readonly ServiceBusProcessor _processor;
     private readonly IMessageSerializer _messageSerializer;
     private readonly ILogger _logger;
@@ -22,6 +30,8 @@ public abstract class CommandConsumerBase<T> : IConsumer, IAsyncDisposable where
         ILoggerFactory loggerFactory,
         IMessageSerializer? messageSerializer = null)
     {
+        TopicName = typeof(T).Name;
+
         _logger = loggerFactory.CreateLogger(GetType()) ?? throw new ArgumentNullException(nameof(loggerFactory));
 
         var serviceBusClient = new ServiceBusClient(azureServiceBusConfiguration.ConnectionString);
@@ -70,7 +80,6 @@ public abstract class CommandConsumerBase<T> : IConsumer, IAsyncDisposable where
             throw;
         }
     }
-
     public async Task StartAsync(CancellationToken cancellationToken = default) =>
         await _processor.StartProcessingAsync(cancellationToken).ConfigureAwait(false);
 
