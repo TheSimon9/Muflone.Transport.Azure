@@ -11,7 +11,7 @@
 	  <PackageProjectUrl>https://github.com/CQRS-Muflone/Muflone.Transport.Azure</PackageProjectUrl>
 	  <RepositoryUrl>https://github.com/CQRS-Muflone/Muflone.Transport.Azure</RepositoryUrl>
 	  <RepositoryType>Git</RepositoryType>
-	  <PackageTags>Broker, Azure, CQRS, Event Sourcing, Event Store, Service Bus</PackageTags>
+	  <PackageTags>Broker, Azure, CQRS, Saga, Event Sourcing, Event Store, Service Bus</PackageTags>
 	  <PackageReadmeFile>README.md</PackageReadmeFile>
 	  <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
 	  <PackageLicenseExpression>MIT</PackageLicenseExpression>

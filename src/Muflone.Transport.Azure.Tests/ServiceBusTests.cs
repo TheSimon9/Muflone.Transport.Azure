@@ -1,9 +1,12 @@
 using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Muflone.Core;
 using Muflone.Factories;
 using Muflone.Messages.Commands;
+using Muflone.Transport.Azure.Abstracts;
+using Muflone.Transport.Azure.Consumers;
 using Muflone.Transport.Azure.Extensions;
 using Muflone.Transport.Azure.Factories;
 using Muflone.Transport.Azure.Models;
@@ -36,7 +39,7 @@ public class ServiceBusTests
     }
 
     [Fact]
-    public async Task Can_SendAndReceiveCommand_To_AzureServiceBus()
+    public async Task Can_SendAndReceiveCommand_With_AzureServiceBus()
     {
         var connectionString =
             "Endpoint=sb://brewup.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=1Iy45wRMiuVRD6A/hTYh3dH8Lgn3K/AHxkUMt5QbdOA=";
@@ -50,26 +53,46 @@ public class ServiceBusTests
         var command = new AddOrder(new OrderId(Guid.NewGuid()), DateTime.UtcNow);
         await serviceBus.SendAsync(command);
 
-        Thread.Sleep(1000);
-        var commandProcessor = new CommandProcessor<AddOrder>(new ServiceBusClient(connectionString),
-            new CommandHandlerFactoryAsync(_serviceProvider), new MessageSerializer(),
-            new AzureServiceBusConfiguration(connectionString), new NullLogger<CommandProcessor<AddOrder>>());
+        var commandProcessor = new AddOrderProcessor(new AzureServiceBusConfiguration(connectionString, "addorder"), 
+            new NullLoggerFactory());
 
         await commandProcessor.StartAsync();
         Thread.Sleep(10000);
     }
 }
 
+public class AddOrderProcessor : CommandConsumerBase<AddOrder>
+{
+    public AddOrderProcessor(AzureServiceBusConfiguration azureServiceBusConfiguration, ILoggerFactory loggerFactory,
+        IMessageSerializer? messageSerializer = null) : base(azureServiceBusConfiguration, loggerFactory,
+        messageSerializer)
+    {
+        CommandHandlerAsync = new AddOrderCommandHandler<AddOrder>();
+    }
+
+    protected override ICommandHandlerAsync<AddOrder> CommandHandlerAsync { get; }
+}
+
+//public class AddOrderConsumer : CommandConsumerBase<AddOrder>
+//{
+//    public ICommandHandlerAsync<AddOrder> CommandHandlerAsync = new AddOrderCommandHandler<AddOrder>();
+//}
+
 public record AzureCommand(Guid OrderId, DateTime OrderDate)
 {
     //public static AzureCommand New() => new(Guid.NewGuid(), DateTime.UtcNow);
 }
 
-public record AddOrder(OrderId OrderId, DateTime OrderDate) : ICommand
+public class AddOrder: Command
 {
-    public Guid MessageId { get; set; } = Guid.NewGuid();
-    public Dictionary<string, object> UserProperties { get; set; } = new();
-    public DomainId AggregateId { get; } = OrderId;
+    public readonly OrderId OrderId;
+    public readonly DateTime OrderDate;
+
+    public AddOrder(OrderId aggregateId, DateTime orderDate) : base(aggregateId)
+    {
+        OrderId = aggregateId;
+        OrderDate = orderDate;
+    }
 }
 
 public class OrderId : DomainId

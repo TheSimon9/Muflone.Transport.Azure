@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using Muflone.Messages;
 using Muflone.Messages.Commands;
+using Muflone.Transport.Azure.Abstracts;
 using Muflone.Transport.Azure.Extensions;
 using Muflone.Transport.Azure.Factories;
 
@@ -74,10 +75,13 @@ public class ServiceBus : IServiceBus, IEventBus
 
         var serializedMessage = _messageSerializer.Serialize(@event);
 
-        var correlationPair = @event.UserProperties.FirstOrDefault(u => u.Key.Equals("CorrelationId"));
         var correlationId = string.Empty;
-        if (correlationPair.Value != null)
-            correlationId = correlationPair.Value.ToString();
+        if (@event.UserProperties != null)
+        {
+            var correlationPair = @event.UserProperties.FirstOrDefault(u => u.Key.Equals("CorrelationId"));
+            if (correlationPair.Value != null)
+                correlationId = correlationPair.Value.ToString();
+        }
 
         var busMessage = new ServiceBusMessage(serializedMessage)
         {

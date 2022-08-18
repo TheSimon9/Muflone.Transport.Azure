@@ -5,14 +5,14 @@ namespace Muflone.Transport.Azure.Factories;
 
 public static class ServiceBusAdministrator
 {
-	public static async Task CreateTopicIfNotExistAsync(AzureQueueReferences azureQueueReferences)
+	public static async Task CreateTopicIfNotExistAsync(AzureServiceBusConfiguration azureServiceBusConfiguration)
 	{
-		var adminClient = new ServiceBusAdministrationClient(azureQueueReferences.ConnectionString);
-		var topicExists = await adminClient.TopicExistsAsync(azureQueueReferences.TopicName);
+		var adminClient = new ServiceBusAdministrationClient(azureServiceBusConfiguration.ConnectionString);
+		var topicExists = await adminClient.TopicExistsAsync(azureServiceBusConfiguration.TopicName);
 
 		if (!topicExists)
 		{
-			var options = new CreateTopicOptions(azureQueueReferences.TopicName)
+			var options = new CreateTopicOptions(azureServiceBusConfiguration.TopicName)
 			{
 				MaxSizeInMegabytes = 1024
 			};
@@ -20,10 +20,10 @@ public static class ServiceBusAdministrator
 		}
 
 		var subscriptionExists =
-			await adminClient.SubscriptionExistsAsync(azureQueueReferences.TopicName, azureQueueReferences.SubscriptionName);
+			await adminClient.SubscriptionExistsAsync(azureServiceBusConfiguration.TopicName, azureServiceBusConfiguration.SubscriptionName);
 		if (!subscriptionExists)
 		{
-			var options = new CreateSubscriptionOptions(azureQueueReferences.TopicName, azureQueueReferences.SubscriptionName)
+			var options = new CreateSubscriptionOptions(azureServiceBusConfiguration.TopicName, azureServiceBusConfiguration.SubscriptionName)
 			{
 				DefaultMessageTimeToLive = new TimeSpan(14, 0, 0, 0),
 				DeadLetteringOnMessageExpiration = true,

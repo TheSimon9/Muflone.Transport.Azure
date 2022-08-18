@@ -29,6 +29,19 @@ public class ServiceBusSenderFactory : IAsyncDisposable, IServiceBusSenderFactor
         return sender;
     }
 
+    public ServiceBusSender Create(IMessage message)
+    {
+        var references = new AzureQueueReferences(message.GetType().Name, "beerdriven-subscription", 
+            "Endpoint=sb://brewup.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=1Iy45wRMiuVRD6A/hTYh3dH8Lgn3K/AHxkUMt5QbdOA=");
+
+        var sender = _senders.GetOrAdd(references, _ => _serviceBusClient.CreateSender(references.TopicName));
+
+        if (sender is null || sender.IsClosed)
+            sender = _senders[references] = _serviceBusClient.CreateSender(references.TopicName);
+
+        return sender;
+    }
+
     public async ValueTask DisposeAsync()
     {
         foreach (var sender in _senders.Values)

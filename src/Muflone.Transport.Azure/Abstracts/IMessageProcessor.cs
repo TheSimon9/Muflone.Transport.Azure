@@ -2,7 +2,7 @@
 
 namespace Muflone.Transport.Azure.Abstracts;
 
-public interface ICommandProcessor
+public interface IMessageProcessor
 {
     Task ProcessAsync<T>(T message, CancellationToken cancellationToken = default);
 }
