@@ -16,7 +16,7 @@ public class ServiceBusSenderFactory : IAsyncDisposable, IServiceBusSenderFactor
         IEnumerable<AzureServiceBusConfiguration> configurations)
     {
         _serviceBusClient = serviceBusClient ?? throw new ArgumentNullException(nameof(serviceBusClient));
-        _configurations = configurations;
+        _configurations = configurations;   
     }
 
     public ServiceBusSender Create<T>(T message) where T : IMessage
