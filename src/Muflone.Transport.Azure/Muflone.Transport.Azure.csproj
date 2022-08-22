@@ -1,0 +1,44 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+	  <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+	  <Version>6.0.0</Version>
+	  <Authors>Alberto Acerbis - Alessandro Colla</Authors>
+	  <Description>Microsoft Azure Service bus support and wrappers for Muflone's CommandHandlers and EventHandlers</Description>
+	  <PackageProjectUrl>https://github.com/CQRS-Muflone/Muflone.Transport.Azure</PackageProjectUrl>
+	  <RepositoryUrl>https://github.com/CQRS-Muflone/Muflone.Transport.Azure</RepositoryUrl>
+	  <RepositoryType>Git</RepositoryType>
+	  <PackageTags>Broker, Azure, CQRS, Saga, Event Sourcing, Event Store, Service Bus</PackageTags>
+	  <PackageReadmeFile>README.md</PackageReadmeFile>
+	  <PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+	  <PackageLicenseExpression>MIT</PackageLicenseExpression>
+	  <PackageIcon>Logo.png</PackageIcon>
+  </PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="Azure.Messaging.ServiceBus" Version="7.10.0" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
+		<PackageReference Include="Muflone" Version="6.0.5" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Include="..\..\..\Logo.png">
+		  <Pack>True</Pack>
+		  <PackagePath>\</PackagePath>
+		</None>
+		<None Include="..\..\README.md">
+			<Pack>True</Pack>
+			<PackagePath>\</PackagePath>
+		</None>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="Factories\" />
+	  <Folder Include="Extensions\" />
+	</ItemGroup>
+
+</Project>
