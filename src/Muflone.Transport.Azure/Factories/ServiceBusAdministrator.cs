@@ -3,6 +3,7 @@ using Muflone.Transport.Azure.Models;
 
 namespace Muflone.Transport.Azure.Factories;
 
+//TODO: Must handle exceptions in case of connection errors! We can implement a new property ConnectionString and use it to check write rights
 public static class ServiceBusAdministrator
 {
 	public static async Task CreateTopicIfNotExistAsync(AzureServiceBusConfiguration azureServiceBusConfiguration)
@@ -20,10 +21,12 @@ public static class ServiceBusAdministrator
 		}
 
 		var subscriptionExists =
-			await adminClient.SubscriptionExistsAsync(azureServiceBusConfiguration.TopicName, $"{azureServiceBusConfiguration.ClientId}-subscription");
+			await adminClient.SubscriptionExistsAsync(azureServiceBusConfiguration.TopicName,
+				$"{azureServiceBusConfiguration.ClientId}-subscription");
 		if (!subscriptionExists)
 		{
-			var options = new CreateSubscriptionOptions(azureServiceBusConfiguration.TopicName, $"{azureServiceBusConfiguration.ClientId}-subscription")
+			var options = new CreateSubscriptionOptions(azureServiceBusConfiguration.TopicName,
+				$"{azureServiceBusConfiguration.ClientId}-subscription")
 			{
 				DefaultMessageTimeToLive = new TimeSpan(14, 0, 0, 0),
 				DeadLetteringOnMessageExpiration = true,

@@ -5,5 +5,5 @@ namespace Muflone.Transport.Azure.Factories;
 
 public interface IAzureQueueReferenceFactory
 {
-    AzureQueueReferences Create<T>() where T : IMessage;
+	AzureQueueReferences Create<T>() where T : IMessage;
 }
