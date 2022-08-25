@@ -5,10 +5,22 @@ namespace Muflone.Transport.Azure.Abstracts;
 
 public interface IConsumer
 {
-    string TopicName { get; }
-    Task StartAsync(CancellationToken cancellationToken = default);
-    Task StopAsync(CancellationToken cancellationToken = default);
+	string TopicName { get; }
+	Task StartAsync(CancellationToken cancellationToken = default);
+	Task StopAsync(CancellationToken cancellationToken = default);
+}
 
-    Task CommandConsumeAsync<T>(T message, CancellationToken cancellationToken = default) where T : class, ICommand;
-    Task DomainEventConsumeAsync<T>(T message, CancellationToken cancellationToken = default) where T : class, IDomainEvent;
+public interface IDomainEventConsumer<in T> : IConsumer where T : class, IDomainEvent
+{
+	Task ConsumeAsync(T message, CancellationToken cancellationToken = default);
+}
+
+public interface IIntegrationEventConsumer<in T> : IConsumer where T : class, IIntegrationEvent
+{
+	Task ConsumeAsync(T message, CancellationToken cancellationToken = default);
+}
+
+public interface ICommandConsumer<in T> : IConsumer where T : class, ICommand
+{
+	Task ConsumeAsync(T message, CancellationToken cancellationToken = default);
 }

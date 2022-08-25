@@ -8,7 +8,7 @@ using Muflone.Transport.Azure.Factories;
 
 namespace Muflone.Transport.Azure.Consumers;
 
-public abstract class DomainEventConsumerBase<T> : IDomainEventConsumer<T>, IAsyncDisposable where T : class, IDomainEvent
+public abstract class IntegrationEventConsumerBase<T> : IIntegrationEventConsumer<T>, IAsyncDisposable where T : class, IIntegrationEvent
 {
 	public string TopicName { get; }
 
@@ -16,9 +16,9 @@ public abstract class DomainEventConsumerBase<T> : IDomainEventConsumer<T>, IAsy
 	private readonly Persistence.ISerializer _messageSerializer;
 	private readonly ILogger _logger;
 
-	protected abstract IEnumerable<IDomainEventHandlerAsync<T>> HandlersAsync { get; }
+	protected abstract IEnumerable<IIntegrationEventHandlerAsync<T>> HandlersAsync { get; }
 
-	protected DomainEventConsumerBase(AzureServiceBusConfiguration azureServiceBusConfiguration,
+	protected IntegrationEventConsumerBase(AzureServiceBusConfiguration azureServiceBusConfiguration,
 		ILoggerFactory loggerFactory,
 		Persistence.ISerializer? messageSerializer = null)
 	{
@@ -35,7 +35,7 @@ public abstract class DomainEventConsumerBase<T> : IDomainEventConsumer<T>, IAsy
 
 		var serviceBusClient = new ServiceBusClient(azureServiceBusConfiguration.ConnectionString);
 		_processor = serviceBusClient.CreateProcessor(
-			topicName: GetType().Name.ToLower(CultureInfo.InvariantCulture),
+			topicName: typeof(T).Name.ToLower(CultureInfo.InvariantCulture),
 			subscriptionName: $"{azureServiceBusConfiguration.ClientId}-subscription", new ServiceBusProcessorOptions
 			{
 				AutoCompleteMessages = false,
@@ -94,8 +94,7 @@ public abstract class DomainEventConsumerBase<T> : IDomainEventConsumer<T>, IAsy
 
 	private Task ProcessErrorAsync(ProcessErrorEventArgs arg)
 	{
-		_logger.LogError(arg.Exception,
-			$"An exception has occurred while processing message '{arg.FullyQualifiedNamespace}'");
+		_logger.LogError(arg.Exception, $"An exception has occurred while processing message '{arg.FullyQualifiedNamespace}'");
 		return Task.CompletedTask;
 	}
 

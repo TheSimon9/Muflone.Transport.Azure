@@ -5,6 +5,5 @@ namespace Muflone.Transport.Azure.Factories;
 
 public interface IServiceBusSenderFactory
 {
-    ServiceBusSender Create<T>(T message) where T : IMessage;
-    ServiceBusSender Create(IMessage message);
+	ServiceBusSender Create<T>(T message) where T : IMessage;
 }

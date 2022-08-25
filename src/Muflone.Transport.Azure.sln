@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Muflone.Transport.Azure", "
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{C1ED5463-61E7-4ADB-9229-9B853E014F01}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Muflone.Transport.Azure.Tests", "Muflone.Transport.Azure.Tests\Muflone.Transport.Azure.Tests.csproj", "{45554DA4-631A-4541-8A72-AE5BF57337CC}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Muflone.Transport.Azure.Tests", "Muflone.Transport.Azure.Tests\Muflone.Transport.Azure.Tests.csproj", "{45554DA4-631A-4541-8A72-AE5BF57337CC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
