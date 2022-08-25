@@ -8,24 +8,24 @@ using Muflone.Transport.Azure.Factories;
 
 namespace Muflone.Transport.Azure.Consumers;
 
-public abstract class DomainEventConsumerBase<T> : IDomainEventConsumer, IAsyncDisposable where T : class, IEvent
+public abstract class DomainEventConsumerBase<T> : IDomainEventConsumer<T>, IAsyncDisposable where T : class, IDomainEvent
 {
 	public string TopicName { get; }
 
 	private readonly ServiceBusProcessor _processor;
-	private readonly Muflone.Persistence.ISerializer _messageSerializer;
+	private readonly Persistence.ISerializer _messageSerializer;
 	private readonly ILogger _logger;
 
-	protected abstract IEnumerable<IDomainEventHandlerAsync<T>> DomainEventsHanderAsync { get; }
+	protected abstract IEnumerable<IDomainEventHandlerAsync<T>> HandlersAsync { get; }
 
 	protected DomainEventConsumerBase(AzureServiceBusConfiguration azureServiceBusConfiguration,
 		ILoggerFactory loggerFactory,
-		Muflone.Persistence.ISerializer? messageSerializer = null)
+		Persistence.ISerializer? messageSerializer = null)
 	{
 		TopicName = typeof(T).Name;
 
 		_logger = loggerFactory.CreateLogger(GetType()) ?? throw new ArgumentNullException(nameof(loggerFactory));
-		_messageSerializer = messageSerializer ?? new Muflone.Persistence.Serializer();
+		_messageSerializer = messageSerializer ?? new Persistence.Serializer();
 
 		if (string.IsNullOrWhiteSpace(azureServiceBusConfiguration.ClientId))
 			throw new ArgumentNullException(nameof(azureServiceBusConfiguration.ClientId));
@@ -35,7 +35,7 @@ public abstract class DomainEventConsumerBase<T> : IDomainEventConsumer, IAsyncD
 
 		var serviceBusClient = new ServiceBusClient(azureServiceBusConfiguration.ConnectionString);
 		_processor = serviceBusClient.CreateProcessor(
-			topicName: typeof(T).Name.ToLower(CultureInfo.InvariantCulture),
+			topicName: GetType().Name.ToLower(CultureInfo.InvariantCulture),
 			subscriptionName: $"{azureServiceBusConfiguration.ClientId}-subscription", new ServiceBusProcessorOptions
 			{
 				AutoCompleteMessages = false,
@@ -50,17 +50,16 @@ public abstract class DomainEventConsumerBase<T> : IDomainEventConsumer, IAsyncD
 
 	public Task StopAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-	public async Task DomainEventConsumeAsync<T1>(T1 message, CancellationToken cancellationToken = default)
-		where T1 : class, IDomainEvent
+	public async Task ConsumeAsync(T message, CancellationToken cancellationToken = default)
 	{
 		try
 		{
 			if (message == null)
 				throw new ArgumentNullException(nameof(message));
 
-			foreach (var eventHandlerAsync in DomainEventsHanderAsync)
+			foreach (var handlerAsync in HandlersAsync)
 			{
-				await eventHandlerAsync.HandleAsync((dynamic)message, cancellationToken);
+				await handlerAsync.HandleAsync((dynamic)message, cancellationToken);
 			}
 		}
 		catch (Exception ex)
@@ -77,9 +76,9 @@ public abstract class DomainEventConsumerBase<T> : IDomainEventConsumer, IAsyncD
 		{
 			_logger.LogInformation($"Received message '{args.Message.MessageId}'. Processing...");
 
-			var message = _messageSerializer.Deserialize<T>(args.Message.Body.ToArray());
+			var message = await _messageSerializer.DeserializeAsync<T>(args.Message.Body.ToString());
 
-			await DomainEventConsumeAsync((IDomainEvent)message, args.CancellationToken);
+			await ConsumeAsync(message, args.CancellationToken);
 
 			await args.CompleteMessageAsync(args.Message).ConfigureAwait(false);
 		}

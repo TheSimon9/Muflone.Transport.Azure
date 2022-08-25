@@ -5,9 +5,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Muflone.Core;
 using Muflone.Factories;
 using Muflone.Messages.Commands;
-using Muflone.Transport.Azure.Abstracts;
+using Muflone.Persistence;
 using Muflone.Transport.Azure.Consumers;
-using Muflone.Transport.Azure.Extensions;
 using Muflone.Transport.Azure.Factories;
 using Muflone.Transport.Azure.Models;
 
@@ -28,12 +27,12 @@ public class ServiceBusTests
     }
 
     [Fact]
-    public void Can_Serialize_And_Deserialize_Command()
+    public async Task Can_Serialize_And_Deserialize_Command()
     {
-        var serializer = new MessageSerializer();
+        var serializer = new Serializer();
         var command = new AddOrder(new OrderId(Guid.NewGuid()), DateTime.UtcNow);
-        var serializedCommand = serializer.Serialize(command );
-        var commandDeserialize = serializer.Deserialize<AddOrder>(serializedCommand);
+        var serializedCommand = await serializer.SerializeAsync(command);
+        var commandDeserialize = await serializer.DeserializeAsync<AddOrder>(serializedCommand);
 
         Assert.Equal(command.OrderId, commandDeserialize.OrderId);
     }
@@ -41,8 +40,7 @@ public class ServiceBusTests
     [Fact]
     public async Task Can_SendAndReceiveCommand_With_AzureServiceBus()
     {
-        var connectionString =
-            "Endpoint=sb://brewup.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=1Iy45wRMiuVRD6A/hTYh3dH8Lgn3K/AHxkUMt5QbdOA=";
+        var connectionString = "Endpoint=sb://brewup.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=1Iy45wRMiuVRD6A/hTYh3dH8Lgn3K/AHxkUMt5QbdOA=";
 
         var configurations = new List<AzureServiceBusConfiguration>
         {
@@ -67,18 +65,17 @@ public class ServiceBusTests
 public class AddOrderProcessor : CommandConsumerBase<AddOrder>
 {
     public AddOrderProcessor(AzureServiceBusConfiguration azureServiceBusConfiguration, ILoggerFactory loggerFactory,
-        IMessageSerializer? messageSerializer = null) : base(azureServiceBusConfiguration, loggerFactory,
-        messageSerializer)
+        ISerializer? messageSerializer = null) : base(azureServiceBusConfiguration, loggerFactory, messageSerializer)
     {
-        CommandHandlerAsync = new AddOrderCommandHandler<AddOrder>();
+        HandlerAsync = new AddOrderCommandHandler<AddOrder>();
     }
 
-    protected override ICommandHandlerAsync<AddOrder> CommandHandlerAsync { get; }
+    protected override ICommandHandlerAsync<AddOrder> HandlerAsync { get; }
 }
 
 //public class AddOrderConsumer : CommandConsumerBase<AddOrder>
 //{
-//    public ICommandHandlerAsync<AddOrder> CommandHandlerAsync = new AddOrderCommandHandler<AddOrder>();
+//    public ICommandHandlerAsync<AddOrder> HandlerAsync = new AddOrderCommandHandler<AddOrder>();
 //}
 
 public record AzureCommand(Guid OrderId, DateTime OrderDate)

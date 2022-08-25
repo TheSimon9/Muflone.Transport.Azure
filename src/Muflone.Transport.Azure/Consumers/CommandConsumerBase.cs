@@ -4,7 +4,6 @@ using Muflone.Messages.Commands;
 using Muflone.Transport.Azure.Abstracts;
 using Muflone.Transport.Azure.Models;
 using System.Globalization;
-using Muflone.Messages.Events;
 using Muflone.Transport.Azure.Factories;
 
 namespace Muflone.Transport.Azure.Consumers;
@@ -14,26 +13,26 @@ namespace Muflone.Transport.Azure.Consumers;
 /// TODO: Rimuovere stringhe di connessione e subscriptioname dal codice
 /// </summary>
 /// <typeparam name="T"></typeparam>
-public abstract class CommandConsumerBase<T> : ICommandConsumer, IAsyncDisposable where T : class, ICommand
+public abstract class CommandConsumerBase<T> : ICommandConsumer<T>, IAsyncDisposable where T : class, ICommand
 {
 	public string TopicName { get; }
 
 	private readonly ServiceBusProcessor _processor;
-	private readonly Muflone.Persistence.ISerializer _messageSerializer;
+	private readonly Persistence.ISerializer _messageSerializer;
 	private readonly ILogger _logger;
 
-	protected abstract ICommandHandlerAsync<T> CommandHandlerAsync { get; }
+	protected abstract ICommandHandlerAsync<T> HandlerAsync { get; }
 
 	protected CommandConsumerBase(AzureServiceBusConfiguration azureServiceBusConfiguration,
 		ILoggerFactory loggerFactory,
-		Muflone.Persistence.ISerializer? messageSerializer = null)
+		Persistence.ISerializer? messageSerializer = null)
 	{
 		TopicName = typeof(T).Name;
 
 		_logger = loggerFactory.CreateLogger(GetType()) ?? throw new ArgumentNullException(nameof(loggerFactory));
 
 		var serviceBusClient = new ServiceBusClient(azureServiceBusConfiguration.ConnectionString);
-		_messageSerializer = messageSerializer ?? new Muflone.Persistence.Serializer();
+		_messageSerializer = messageSerializer ?? new Persistence.Serializer();
 
 		// Create Queue on Azure ServiceBus if missing
 		ServiceBusAdministrator.CreateQueueIfNotExistAsync(new AzureQueueReferences(typeof(T).Name, "",
@@ -50,7 +49,7 @@ public abstract class CommandConsumerBase<T> : ICommandConsumer, IAsyncDisposabl
 		_processor.ProcessErrorAsync += ProcessErrorAsync;
 	}
 
-	public Task CommandConsumeAsync<T>(T message, CancellationToken cancellationToken = default) where T : class, ICommand
+	public Task ConsumeAsync(T message, CancellationToken cancellationToken = default)
 	{
 		if (message == null)
 			throw new ArgumentNullException(nameof(message));
@@ -65,12 +64,11 @@ public abstract class CommandConsumerBase<T> : ICommandConsumer, IAsyncDisposabl
 			if (message == null)
 				throw new ArgumentNullException(nameof(message));
 
-			await CommandHandlerAsync.HandleAsync((dynamic)message, cancellationToken);
+			await HandlerAsync.HandleAsync((dynamic)message, cancellationToken);
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex,
-				$"An error occurred processing command {typeof(T).Name}. StackTrace: {ex.StackTrace} - Source: {ex.Source} - Message: {ex.Message}");
+			_logger.LogError(ex, $"An error occurred processing command {typeof(T).Name}. StackTrace: {ex.StackTrace} - Source: {ex.Source} - Message: {ex.Message}");
 			throw;
 		}
 	}
@@ -80,15 +78,16 @@ public abstract class CommandConsumerBase<T> : ICommandConsumer, IAsyncDisposabl
 
 	public Task StopAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
+
 	private async Task AzureMessageHandler(ProcessMessageEventArgs args)
 	{
 		try
 		{
 			_logger.LogInformation($"Received message '{args.Message.MessageId}'. Processing...");
 
-			var message = _messageSerializer.Deserialize<T>(args.Message.Body.ToArray());
+			var message = await _messageSerializer.DeserializeAsync<T>(args.Message.Body.ToString());
 
-			await CommandConsumeAsync((ICommand)message, args.CancellationToken);
+			await ConsumeAsync(message, args.CancellationToken);
 
 			await args.CompleteMessageAsync(args.Message).ConfigureAwait(false);
 		}
@@ -104,8 +103,7 @@ public abstract class CommandConsumerBase<T> : ICommandConsumer, IAsyncDisposabl
 
 	private Task ProcessErrorAsync(ProcessErrorEventArgs arg)
 	{
-		_logger.LogError(arg.Exception,
-			$"An exception has occurred while processing message '{arg.FullyQualifiedNamespace}'");
+		_logger.LogError(arg.Exception, $"An exception has occurred while processing message '{arg.FullyQualifiedNamespace}'");
 		return Task.CompletedTask;
 	}
 

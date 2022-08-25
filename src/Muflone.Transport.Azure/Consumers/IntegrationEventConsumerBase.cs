@@ -8,25 +8,24 @@ using Muflone.Transport.Azure.Factories;
 
 namespace Muflone.Transport.Azure.Consumers;
 
-public abstract class IntegrationEventConsumerBase<T> : IIntegrationEventConsumer, IAsyncDisposable
-	where T : class, IEvent
+public abstract class IntegrationEventConsumerBase<T> : IIntegrationEventConsumer<T>, IAsyncDisposable where T : class, IIntegrationEvent
 {
 	public string TopicName { get; }
 
 	private readonly ServiceBusProcessor _processor;
-	private readonly Muflone.Persistence.ISerializer _messageSerializer;
+	private readonly Persistence.ISerializer _messageSerializer;
 	private readonly ILogger _logger;
 
-	protected abstract IEnumerable<IIntegrationEventHandlerAsync<T>> IntegrationEventsHanderAsync { get; }
+	protected abstract IEnumerable<IIntegrationEventHandlerAsync<T>> HandlersAsync { get; }
 
 	protected IntegrationEventConsumerBase(AzureServiceBusConfiguration azureServiceBusConfiguration,
 		ILoggerFactory loggerFactory,
-		Muflone.Persistence.ISerializer? messageSerializer = null)
+		Persistence.ISerializer? messageSerializer = null)
 	{
 		TopicName = typeof(T).Name;
 
 		_logger = loggerFactory.CreateLogger(GetType()) ?? throw new ArgumentNullException(nameof(loggerFactory));
-		_messageSerializer = messageSerializer ?? new Muflone.Persistence.Serializer();
+		_messageSerializer = messageSerializer ?? new Persistence.Serializer();
 
 		if (string.IsNullOrWhiteSpace(azureServiceBusConfiguration.ClientId))
 			throw new ArgumentNullException(nameof(azureServiceBusConfiguration.ClientId));
@@ -51,17 +50,16 @@ public abstract class IntegrationEventConsumerBase<T> : IIntegrationEventConsume
 
 	public Task StopAsync(CancellationToken cancellationToken = default) => Task.CompletedTask;
 
-	public async Task IntegrationEventConsumeAsync<T1>(T1 message, CancellationToken cancellationToken = default)
-		where T1 : class, IDomainEvent
+	public async Task ConsumeAsync(T message, CancellationToken cancellationToken = default)
 	{
 		try
 		{
 			if (message == null)
 				throw new ArgumentNullException(nameof(message));
 
-			foreach (var eventHandlerAsync in IntegrationEventsHanderAsync)
+			foreach (var handlerAsync in HandlersAsync)
 			{
-				await eventHandlerAsync.HandleAsync((dynamic)message, cancellationToken);
+				await handlerAsync.HandleAsync((dynamic)message, cancellationToken);
 			}
 		}
 		catch (Exception ex)
@@ -78,9 +76,9 @@ public abstract class IntegrationEventConsumerBase<T> : IIntegrationEventConsume
 		{
 			_logger.LogInformation($"Received message '{args.Message.MessageId}'. Processing...");
 
-			var message = _messageSerializer.Deserialize<T>(args.Message.Body.ToArray());
+			var message = await _messageSerializer.DeserializeAsync<T>(args.Message.Body.ToString());
 
-			await IntegrationEventConsumeAsync((IDomainEvent)message, args.CancellationToken);
+			await ConsumeAsync(message, args.CancellationToken);
 
 			await args.CompleteMessageAsync(args.Message).ConfigureAwait(false);
 		}
@@ -96,8 +94,7 @@ public abstract class IntegrationEventConsumerBase<T> : IIntegrationEventConsume
 
 	private Task ProcessErrorAsync(ProcessErrorEventArgs arg)
 	{
-		_logger.LogError(arg.Exception,
-			$"An exception has occurred while processing message '{arg.FullyQualifiedNamespace}'");
+		_logger.LogError(arg.Exception, $"An exception has occurred while processing message '{arg.FullyQualifiedNamespace}'");
 		return Task.CompletedTask;
 	}
 

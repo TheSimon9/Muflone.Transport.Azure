@@ -1,5 +1,6 @@
 ﻿using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.DependencyInjection;
+using Muflone.Persistence;
 using Muflone.Transport.Azure.Abstracts;
 using Muflone.Transport.Azure.Factories;
 using Muflone.Transport.Azure.Models;

@@ -10,19 +10,17 @@ public interface IConsumer
 	Task StopAsync(CancellationToken cancellationToken = default);
 }
 
-public interface IDomainEventConsumer : IConsumer
+public interface IDomainEventConsumer<in T> : IConsumer where T : class, IDomainEvent
 {
-	Task DomainEventConsumeAsync<T>(T message, CancellationToken cancellationToken = default)
-		where T : class, IDomainEvent;
+	Task ConsumeAsync(T message, CancellationToken cancellationToken = default);
 }
 
-public interface IIntegrationEventConsumer : IConsumer
+public interface IIntegrationEventConsumer<in T> : IConsumer where T : class, IIntegrationEvent
 {
-	Task IntegrationEventConsumeAsync<T>(T message, CancellationToken cancellationToken = default)
-		where T : class, IIntegrationEvent;
+	Task ConsumeAsync(T message, CancellationToken cancellationToken = default);
 }
 
-public interface ICommandConsumer : IConsumer
+public interface ICommandConsumer<in T> : IConsumer where T : class, ICommand
 {
-	Task CommandConsumeAsync<T>(T message, CancellationToken cancellationToken = default) where T : class, ICommand;
+	Task ConsumeAsync(T message, CancellationToken cancellationToken = default);
 }
