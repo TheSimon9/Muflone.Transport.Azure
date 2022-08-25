@@ -39,8 +39,4 @@
 	  <Folder Include="Factories\" />
 	</ItemGroup>
 
-	<ItemGroup>
-	  <ProjectReference Include="..\..\..\..\..\Temp\Muflone\Muflone.csproj" />
-	</ItemGroup>
-
 </Project>
