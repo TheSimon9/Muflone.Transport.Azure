@@ -35,7 +35,7 @@ public abstract class DomainEventConsumerBase<T> : IDomainEventConsumer<T>, IAsy
 
 		var serviceBusClient = new ServiceBusClient(azureServiceBusConfiguration.ConnectionString);
 		_processor = serviceBusClient.CreateProcessor(
-			topicName: GetType().Name.ToLower(CultureInfo.InvariantCulture),
+			topicName: typeof(T).Name.ToLower(CultureInfo.InvariantCulture),
 			subscriptionName: $"{azureServiceBusConfiguration.ClientId}-subscription", new ServiceBusProcessorOptions
 			{
 				AutoCompleteMessages = false,
