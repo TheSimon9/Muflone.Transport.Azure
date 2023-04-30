@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Muflone.Persistence;
 using Muflone.Transport.Azure.Abstracts;
+using Muflone.Transport.Azure.Consumers;
 using Muflone.Transport.Azure.Factories;
 using Muflone.Transport.Azure.Models;
 
@@ -34,12 +35,11 @@ public class TransportAzureHelperTests
         var res = serviceCollection.AddMufloneTransportAzure(_azureServiceBusConfigurationMock.Object, consumers);
         
         Assert.Contains(res, x => x.ServiceType == typeof(IEnumerable<AzureServiceBusConfiguration>));
-        Assert.Contains(res, x => x.ServiceType == typeof(ServiceBusClient));
+        Assert.Contains(res, x => x.ServiceType == typeof(IServiceBusClientFactory));
         Assert.Contains(res, x => x.ServiceType == typeof(IServiceBusSenderFactory));
         Assert.Contains(res, x => x.ServiceType == typeof(IServiceBus));
         Assert.Contains(res, x => x.ServiceType == typeof(IEventBus));
     }
-
 
     public class FakeConsumer : IConsumer
     {

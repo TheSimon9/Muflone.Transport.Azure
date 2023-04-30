@@ -23,7 +23,7 @@ public abstract class CommandConsumerBase<T> : ICommandConsumer<T>, IAsyncDispos
 
 	protected abstract ICommandHandlerAsync<T> HandlerAsync { get; }
 
-	protected CommandConsumerBase(AzureServiceBusConfiguration azureServiceBusConfiguration,
+	protected CommandConsumerBase(IServiceBusClientFactory serviceBusClientFactory,
 		ILoggerFactory loggerFactory,
 		Persistence.ISerializer? messageSerializer = null)
 	{
@@ -31,20 +31,11 @@ public abstract class CommandConsumerBase<T> : ICommandConsumer<T>, IAsyncDispos
 
 		_logger = loggerFactory.CreateLogger(GetType()) ?? throw new ArgumentNullException(nameof(loggerFactory));
 
-		var serviceBusClient = new ServiceBusClient(azureServiceBusConfiguration.ConnectionString);
 		_messageSerializer = messageSerializer ?? new Persistence.Serializer();
-
-		// Create Queue on Azure ServiceBus if missing
-		ServiceBusAdministrator.CreateQueueIfNotExistAsync(new AzureQueueReferences(typeof(T).Name, "",
-			azureServiceBusConfiguration.ConnectionString)).GetAwaiter().GetResult();
-
-		_processor = serviceBusClient.CreateProcessor(
-			topicName: typeof(T).Name.ToLower(CultureInfo.InvariantCulture),
-			subscriptionName: "", new ServiceBusProcessorOptions
-			{
-				AutoCompleteMessages = false,
-				MaxConcurrentCalls = azureServiceBusConfiguration.MaxConcurrentCalls
-			});
+		
+		serviceBusClientFactory.CreateQueueIfNotExists(TopicName);
+		
+		_processor = serviceBusClientFactory.CreateProcessor(TopicName.ToLower(CultureInfo.InvariantCulture));
 		_processor.ProcessMessageAsync += AzureMessageHandler;
 		_processor.ProcessErrorAsync += ProcessErrorAsync;
 	}

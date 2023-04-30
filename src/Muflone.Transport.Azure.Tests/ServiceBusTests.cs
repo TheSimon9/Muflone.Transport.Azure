@@ -2,6 +2,7 @@ using Azure.Messaging.ServiceBus;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 using Muflone.Core;
 using Muflone.Factories;
 using Muflone.Messages.Commands;
@@ -48,14 +49,15 @@ public class ServiceBusTests
         };
         var serviceBusSenderFactory = new ServiceBusSenderFactory(new ServiceBusClient(connectionString), configurations);
         var serviceBus = new ServiceBus(serviceBusSenderFactory, new NullLogger<ServiceBus>());
-
+        var serviceBusClientFactory = new ServiceBusClientFactory(new AzureServiceBusConfiguration(connectionString, "", "ServiceBusTest"));
+        
         await ServiceBusAdministrator.CreateQueueIfNotExistAsync(new AzureQueueReferences("addorder", "addorder-subscription",
-            connectionString));
+            connectionString)); //This is useless? See CommandConsumerBase at row 37
+        
         var command = new AddOrder(new OrderId(Guid.NewGuid()), DateTime.UtcNow);
         await serviceBus.SendAsync(command);
 
-        var commandProcessor = new AddOrderProcessor(new AzureServiceBusConfiguration(connectionString, "addorder", "ServiceBusTest"), 
-            new NullLoggerFactory());
+        var commandProcessor = new AddOrderProcessor(serviceBusClientFactory, new NullLoggerFactory());
 
         await commandProcessor.StartAsync();
         Thread.Sleep(10000);
@@ -64,8 +66,8 @@ public class ServiceBusTests
 
 public class AddOrderProcessor : CommandConsumerBase<AddOrder>
 {
-    public AddOrderProcessor(AzureServiceBusConfiguration azureServiceBusConfiguration, ILoggerFactory loggerFactory,
-        ISerializer? messageSerializer = null) : base(azureServiceBusConfiguration, loggerFactory, messageSerializer)
+    public AddOrderProcessor(IServiceBusClientFactory serviceBusClientFactory, ILoggerFactory loggerFactory,
+        ISerializer? messageSerializer = null) : base(serviceBusClientFactory, loggerFactory, messageSerializer)
     {
         HandlerAsync = new AddOrderCommandHandler<AddOrder>();
     }

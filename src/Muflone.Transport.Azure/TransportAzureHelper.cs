@@ -24,8 +24,12 @@ public static class TransportAzureHelper
 			});
 		}
 
+		var serviceBusClient = new ServiceBusClient(azureServiceBusConfiguration.ConnectionString);
+		
 		services.AddSingleton(configurations);
-		services.AddSingleton(new ServiceBusClient(azureServiceBusConfiguration.ConnectionString));
+		services.AddSingleton(azureServiceBusConfiguration);
+		services.AddSingleton(serviceBusClient);
+		services.AddSingleton<IServiceBusClientFactory, ServiceBusClientFactory>();
 		services.AddSingleton<IServiceBusSenderFactory, ServiceBusSenderFactory>();
 		services.AddSingleton<IServiceBus, ServiceBus>();
 		services.AddSingleton<IEventBus, ServiceBus>();
